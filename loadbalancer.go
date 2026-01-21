@@ -21,7 +21,7 @@ func (mainPool *ServerPool) GetNextValidPeer() *Backend {
 		for !mainPool.Backends[new].Alive {
 			new = (new+1)%n
 
-			// If all backends are DOWN, return an arror
+			// If all backends are DOWN, return nil for error handling
 			if old == new { 
 				return nil
 			}
@@ -39,12 +39,13 @@ func (mainPool *ServerPool) AddBackend(backend *Backend) {
 }
 
 
-
 func (mainPool *ServerPool) SetBackendStatus(url *url.URL, alive bool) {
 	for _, backend := range mainPool.Backends {
+		backend.mux.Lock()
 		if backend.URL == url {
 			backend.Alive = alive
 			break
 		}
+		defer backend.mux.Unlock()
 	}
 }

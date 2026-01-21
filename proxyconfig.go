@@ -6,6 +6,6 @@ import (
 
 type ProxyConfig struct { 
 	Port int `json:"port"`          
-	Strategy string `json:"strategy"` // e.g., "round-robin" or "least-conn" 
+	Strategy string `json:"strategy"` // can be "round-robin" or "least-conn" 
 	HealthCheckFreq time.Duration `json:"health_check_frequency"` 
 } 

@@ -1,3 +1,3 @@
 # Concurrent-Load-Balancer-Reverse-Proxy
 
-balala
+This project is a reverse Proxy designed to balance load
