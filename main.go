@@ -2,18 +2,24 @@ package main
 
 import (
 	"flag"
-	"log"
 	"os"
+	"log"
 	"encoding/json"
-	"net/http"	
+	"net/http"
+	"sync/atomic"	
 
 )
 
 func handleRequests(w http.ResponseWriter, r *http.Request) {
 	backnd := mainPool.GetNextValidPeer()
 	if backnd == nil {
-		log.Fatal("ERROR: 503 Service Unavailable")
+		http.Error(w, "Service Unavailable", http.StatusServiceUnavailable)
 	}
+
+	atomic.AddInt64(&backnd.CurrentConns, 1)
+	defer atomic.AddInt64(&backnd.CurrentConns, -1)
+
+	// Forwarding
 }
 
 var mainPool ServerPool
