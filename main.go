@@ -9,6 +9,16 @@ import (
 	"sync/atomic"	
 )
 
+var mainPool ServerPool
+
+func main() {
+	SetupConfigurations()
+
+	// Serve the proxy
+	http.HandleFunc("/", handleRequests)
+	http.ListenAndServe(":8081", nil)
+}
+
 func handleRequests(w http.ResponseWriter, r *http.Request) {
 	backnd := mainPool.GetNextValidPeer()
 	if backnd == nil {
@@ -21,9 +31,7 @@ func handleRequests(w http.ResponseWriter, r *http.Request) {
     backnd.RevProxy.ServeHTTP(w, r)
 }
 
-var mainPool ServerPool
-
-func main() {
+func SetupConfigurations() {
 	// Read the flag when running, if provided ofc
 	configPath := flag.String("config", "", "Path to the configuration file")
 	flag.Parse()
@@ -37,8 +45,4 @@ func main() {
     if err := json.Unmarshal(file, &proxyConfig); err != nil {
         log.Fatal(err)
     }
-
-	// Serve the proxy
-	http.HandleFunc("/", handleRequests)
-	http.ListenAndServe(":8081", nil)
 }
