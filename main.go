@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"sync/atomic"	
-
 )
 
 func handleRequests(w http.ResponseWriter, r *http.Request) {
@@ -19,7 +18,7 @@ func handleRequests(w http.ResponseWriter, r *http.Request) {
 	atomic.AddInt64(&backnd.CurrentConns, 1)
 	defer atomic.AddInt64(&backnd.CurrentConns, -1)
 
-	// Forwarding
+    backnd.RevProxy.ServeHTTP(w, r)
 }
 
 var mainPool ServerPool
