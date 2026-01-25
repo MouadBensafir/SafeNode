@@ -5,6 +5,7 @@ import (
 	"sync"
 	"net/http/httputil"
 )
+
 type Backend struct {
 	URL 			*url.URL		`json:"url"`
 	Alive 			bool			`json:"alive"`
