@@ -11,9 +11,10 @@ import (
 )
 
 var mainPool ServerPool
+var cfg ProxyConfig
 
 func main() {
-	cfg := SetupConfigurations()
+	cfg = SetupConfigurations()
 
 	// Automatically Add backends from config.json
 	for _, strURL := range cfg.Backends {
@@ -78,7 +79,6 @@ func parseURLFromRequest(r *http.Request) (*url.URL, error) {
 }
 
 func backendsHandler(w http.ResponseWriter, r *http.Request) {
-	// Consolidate validation logic
 	if r.Method != http.MethodPost && r.Method != http.MethodDelete {
 		http.Error(w, "not allowed", http.StatusMethodNotAllowed)
 		return
@@ -118,41 +118,41 @@ func handleRequests(w http.ResponseWriter, r *http.Request) {
 }
 
 func statusHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "not allowed", http.StatusMethodNotAllowed)
-		return
-	}
+    if r.Method != http.MethodGet {
+        http.Error(w, "not allowed", http.StatusMethodNotAllowed)
+        return
+    }
 
-	type backendInfo struct {
-		URL                string `json:"url"`
-		Alive              bool   `json:"alive"`
-		CurrentConnections int64  `json:"current_connections"`
-	}
+    var infos []backendInfo
+    active := 0
+    
 
-	var infos []backendInfo
-	active := 0
-	for _, b := range mainPool.Backends {
-		b.mux.RLock()
-		alive := b.Alive
-		conns := b.CurrentConns
-		b.mux.RUnlock()
+    mainPool.mux.RLock()
+    defer mainPool.mux.RUnlock()
 
-		if alive {
-			active++
-		}
-		infos = append(infos, backendInfo{
-			URL:                b.URL.String(),
-			Alive:              alive,
-			CurrentConnections: conns,
-		})
-	}
+    for _, b := range mainPool.Backends {
+        conns := atomic.LoadInt64(&b.CurrentConns)
+        
+        b.mux.RLock()
+        alive := b.Alive
+        b.mux.RUnlock()
 
-	resp := map[string]interface{}{
-		"total_backends":  len(infos),
-		"active_backends": active,
-		"backends":        infos,
-	}
+        if alive {
+            active++
+        }
+        infos = append(infos, backendInfo{
+            URL:                b.URL.String(),
+            Alive:              alive,
+            CurrentConnections: conns,
+        })
+    }
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+    resp := map[string]interface{}{
+        "total_backends":  len(infos),
+        "active_backends": active,
+        "backends":        infos,
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(resp)
 }

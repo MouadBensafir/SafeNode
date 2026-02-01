@@ -9,7 +9,7 @@ import (
 
 func SetupConfigurations() ProxyConfig {
 	// Read the flag when running, if provided ofc
-	configPath := flag.String("config", "", "Path to the configuration file")
+	configPath := flag.String("config", "config.json", "Path to the configuration file")
 	flag.Parse()
 	if *configPath == "" {
 		*configPath = "config.json" // Defaut configuration
