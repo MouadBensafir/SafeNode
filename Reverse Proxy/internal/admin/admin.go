@@ -12,7 +12,7 @@ import (
 	"github.com/MouadBensafir/SafeNode/internal/proxy"
 )
 
-// BackendsHandler handles POST/DELETE /backends.
+// Handler for POST/DELETE Requests in /backends
 func BackendsHandler(mainPool *pool.ServerPool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost && r.Method != http.MethodDelete {
@@ -40,7 +40,7 @@ func BackendsHandler(mainPool *pool.ServerPool) http.HandlerFunc {
 	}
 }
 
-// StatusHandler handles GET /status.
+// Handler for GET Request in /status
 func StatusHandler(mainPool *pool.ServerPool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -75,6 +75,7 @@ func StatusHandler(mainPool *pool.ServerPool) http.HandlerFunc {
 	}
 }
 
+// Helper function for parsing url
 func parseURLFromRequest(r *http.Request) (*url.URL, error) {
 	var payload struct {
 		URL string `json:"url"`

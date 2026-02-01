@@ -3,12 +3,10 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"time"
 )
 
 func handler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "server1: request received ")
-	time.Sleep(3 * time.Second)
 	fmt.Fprintf(w, "| server1: finished")
 }
 
