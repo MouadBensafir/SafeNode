@@ -50,5 +50,5 @@ A Windows executable (hey.exe) is included in the Reverse Proxy directory, or yo
 
 Run the following command in your terminal to send 200 requests with 100 concurrent workers:
 ```bash
-.\hey.exe -n 200 -c 100 https://www.google.com/
+.\hey.exe -n 200 -c 100 http://localhost:8080
 ```
