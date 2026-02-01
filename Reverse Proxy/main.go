@@ -16,17 +16,26 @@ var mainPool ServerPool
 func main() {
 	cfg := SetupConfigurations()
 
-	// If no backends configured yet, add a default one for quick testing
-	targetStr := "http://localhost:8081"
-	targetURL, _ := url.Parse(targetStr)
+	for _, StringUrl := range cfg.Backends {
+		// Create valid URL
+		url, _ := url.Parse(StringUrl)
 
-	b1 := &Backend{
-		URL:          targetURL,
-		Alive:        false,
-		CurrentConns: 0,
-		RevProxy:     httputil.NewSingleHostReverseProxy(targetURL),
+		// Error Handling to mark the backend as dead immediately upon failure
+		proxy := httputil.NewSingleHostReverseProxy(url)
+		proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+			log.Printf("proxy error for %s: %v", url, err)
+			mainPool.SetBackendStatus(url, false)
+			http.Error(w, "Bad Gateway", http.StatusBadGateway)
+		}
+
+		b_temp := &Backend{
+			URL:          url,
+			Alive:        false,
+			CurrentConns: 0,
+			RevProxy:     proxy,
+		}
+		mainPool.AddBackend(b_temp)
 	}
-	mainPool.Backends = append(mainPool.Backends, b1)
 
 	// Admin endpoints
 	http.HandleFunc("/backends", backendsHandler)
@@ -36,7 +45,7 @@ func main() {
 	http.HandleFunc("/", handleRequests)
 
 	// Start health checker
-	go StartHealthChecker(cfg.HealthCheckFreq)
+	StartHealthChecker(cfg.HealthCheckFreq)
 
 	addr := ":8080"
 	if cfg.Port != 0 {
@@ -61,8 +70,7 @@ func handleRequests(w http.ResponseWriter, r *http.Request) {
 	backnd.RevProxy.ServeHTTP(w, r)
 }
 
-// backendsHandler handles POST /backends to add a backend via admin API
-// JSON body: { "url": "http://localhost:8082" }
+
 func backendsHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPost:

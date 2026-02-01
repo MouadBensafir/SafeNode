@@ -11,7 +11,7 @@ type LoadBalancer interface {
 }
 
 func (mainPool *ServerPool) GetNextValidPeer() *Backend {
-	// If there are no backends configured, return nil
+	// If there are no backends configured
 	n := uint64(len(mainPool.Backends))
 	if n == 0 {
 		return nil
@@ -20,10 +20,8 @@ func (mainPool *ServerPool) GetNextValidPeer() *Backend {
 	// Loop until we can successfully update the current index and return an alive backend
 	for {
 		old := mainPool.Current.Load()
-		// start searching from the next index
+		// Start searching from the next index
 		next := (old + 1) % n
-
-		// search for an alive backend starting at `next`
 		i := next
 		for {
 			if mainPool.Backends[i].Alive {
@@ -31,16 +29,16 @@ func (mainPool *ServerPool) GetNextValidPeer() *Backend {
 			}
 			i = (i + 1) % n
 			if i == next {
-				// completed a full loop, no backend is alive
-				return nil
+				return nil // No backend is alive case
 			}
 		}
 
-		// attempt to set current to the chosen index `i`
+		// Attempt to set current to the chosen index i
 		if mainPool.Current.CompareAndSwap(old, i) {
 			return mainPool.Backends[i]
 		}
-		// otherwise retry
+
+		// Otherwise Retry
 	}
 }
 
@@ -48,6 +46,18 @@ func (mainPool *ServerPool) AddBackend(backend *Backend) {
 	mainPool.mux.Lock()
 	mainPool.Backends = append(mainPool.Backends, backend)
 	mainPool.mux.Unlock()
+}
+
+func (mainPool *ServerPool) RemoveBackend(target *url.URL) bool {
+	mainPool.mux.Lock()
+	defer mainPool.mux.Unlock()
+	for i, backend := range mainPool.Backends {
+		if backend.URL != nil && backend.URL.String() == target.String() {
+			mainPool.Backends = append(mainPool.Backends[:i], mainPool.Backends[i+1:]...)
+			return true
+		}
+	}
+	return false
 }
 
 func (mainPool *ServerPool) SetBackendStatus(target *url.URL, alive bool) {

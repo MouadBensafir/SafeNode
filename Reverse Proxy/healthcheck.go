@@ -7,7 +7,6 @@ import (
 	"time"
 )
 
-
 func StartHealthChecker(freqMillis int) {
 	freq := time.Duration(freqMillis) * time.Millisecond
 	if freq <= 0 {
