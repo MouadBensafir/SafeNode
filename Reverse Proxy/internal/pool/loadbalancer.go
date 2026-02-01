@@ -10,39 +10,31 @@ type LoadBalancer interface {
 	GetNextValidPeer() *backend.Backend
 	AddBackend(backend *backend.Backend)
 	SetBackendStatus(url *url.URL, alive bool)
+	SetStrategy(strategy BalancingStrategy)
 }
 
 // Method to get the next valid peer concurrently
 func (mainPool *ServerPool) GetNextValidPeer() *backend.Backend {
-	// If there are no backends configured
-	n := uint64(len(mainPool.Backends))
-	if n == 0 {
+	backends := mainPool.BackendsSnapshot()
+	if len(backends) == 0 {
 		return nil
 	}
 
-	// Loop until we can successfully update the current index and return an alive backend
-	for {
-		old := mainPool.Current.Load()
-		// Start searching from the next index
-		next := (old + 1) % n
-		i := next
-		for {
-			if mainPool.Backends[i].Alive {
-				break
-			}
-			i = (i + 1) % n
-			if i == next {
-				return nil // No backend is alive case
-			}
+	// Incase no strategy is chosen
+	mainPool.mux.RLock()
+	strategy := mainPool.Strategy
+	mainPool.mux.RUnlock()
+	
+	if strategy == nil {
+		mainPool.mux.Lock()
+		if mainPool.Strategy == nil {
+			mainPool.Strategy = &RoundRobinStrategy{}
 		}
-
-		// Attempt to set current to the chosen index i
-		if mainPool.Current.CompareAndSwap(old, i) {
-			return mainPool.Backends[i]
-		}
-
-		// Otherwise Retry
+		strategy = mainPool.Strategy
+		mainPool.mux.Unlock()
 	}
+
+	return strategy.NextBackend(backends)
 }
 
 // Method to add a Backend

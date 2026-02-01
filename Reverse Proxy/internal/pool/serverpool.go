@@ -9,6 +9,7 @@ import (
 
 type ServerPool struct {
 	Backends []*backend.Backend `json:"backends"`
+	Strategy BalancingStrategy
 	Current  atomic.Uint64
 	mux      sync.RWMutex
 }
@@ -19,4 +20,10 @@ func (mainPool *ServerPool) BackendsSnapshot() []*backend.Backend {
 	backends := make([]*backend.Backend, len(mainPool.Backends))
 	copy(backends, mainPool.Backends)
 	return backends
+}
+
+func (mainPool *ServerPool) SetStrategy(strategy BalancingStrategy) {
+	mainPool.mux.Lock()
+	mainPool.Strategy = strategy
+	mainPool.mux.Unlock()
 }
