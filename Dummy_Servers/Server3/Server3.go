@@ -7,9 +7,9 @@ import (
 )
 
 func handler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "server1: request received ")
+	fmt.Fprintf(w, "server3: request received ")
 	time.Sleep(2 * time.Second)
-	fmt.Fprintf(w, "| server1: finished")
+	fmt.Fprintf(w, "| server3: finished")
 }
 
 func health(w http.ResponseWriter, r *http.Request) {
@@ -20,5 +20,5 @@ func health(w http.ResponseWriter, r *http.Request) {
 func main() {
 	http.HandleFunc("/", handler)
 	http.HandleFunc("/health", health)
-	http.ListenAndServe(":9001", nil)
+	http.ListenAndServe(":9003", nil)
 }
