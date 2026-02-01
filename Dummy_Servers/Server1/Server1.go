@@ -2,13 +2,13 @@ package main
 
 import (
 	"net/http"
-	// "time"
+	"time"
 	"fmt"
 )
 
 func handler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Request received !")
-	// time.Sleep(30 * time.Second)
+	time.Sleep(10 * time.Second)
 	fmt.Fprintf(w, "Finished Connection !")
 }
 

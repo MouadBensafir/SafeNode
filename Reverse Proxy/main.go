@@ -2,13 +2,12 @@ package main
 
 import (
 	"encoding/json"
-	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"os"
 	"sync/atomic"
 )
 
@@ -17,26 +16,36 @@ var mainPool ServerPool
 func main() {
 	cfg := SetupConfigurations()
 
+	// If no backends configured yet, add a default one for quick testing
 	targetStr := "http://localhost:8081"
 	targetURL, _ := url.Parse(targetStr)
 
-	// Generating the instance
 	b1 := &Backend{
 		URL:          targetURL,
-		Alive:        true,
+		Alive:        false,
 		CurrentConns: 0,
 		RevProxy:     httputil.NewSingleHostReverseProxy(targetURL),
 	}
-
 	mainPool.Backends = append(mainPool.Backends, b1)
 
-	// Serve the proxy
+	// Admin endpoints
+	http.HandleFunc("/backends", backendsHandler)
+	http.HandleFunc("/status", statusHandler)
+
+	// Proxy endpoint (catch-all)
 	http.HandleFunc("/", handleRequests)
+
+	// Start health checker
+	go StartHealthChecker(cfg.HealthCheckFreq)
+
 	addr := ":8080"
 	if cfg.Port != 0 {
 		addr = ":" + fmt.Sprint(cfg.Port)
 	}
-	http.ListenAndServe(addr, nil)
+	log.Printf("starting proxy on %s", addr)
+	if err := http.ListenAndServe(addr, nil); err != nil {
+		log.Fatalf("server failed: %v", err)
+	}
 }
 
 func handleRequests(w http.ResponseWriter, r *http.Request) {
@@ -52,26 +61,75 @@ func handleRequests(w http.ResponseWriter, r *http.Request) {
 	backnd.RevProxy.ServeHTTP(w, r)
 }
 
-func SetupConfigurations() ProxyConfig {
-	// Read the flag when running, if provided ofc
-	configPath := flag.String("config", "", "Path to the configuration file")
-	flag.Parse()
-	if *configPath == "" {
-		*configPath = "config.json" // Defaut configuration
+// backendsHandler handles POST /backends to add a backend via admin API
+// JSON body: { "url": "http://localhost:8082" }
+func backendsHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodPost:
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+		var payload struct {
+			URL string `json:"url"`
+		}
+		if err := json.Unmarshal(body, &payload); err != nil {
+			http.Error(w, "invalid json", http.StatusBadRequest)
+			return
+		}
+		u, err := url.Parse(payload.URL)
+		if err != nil {
+			http.Error(w, "invalid url", http.StatusBadRequest)
+			return
+		}
+		b := &Backend{
+			URL:          u,
+			Alive:        false,
+			CurrentConns: 0,
+			RevProxy:     httputil.NewSingleHostReverseProxy(u),
+		}
+		mainPool.AddBackend(b)
+		w.WriteHeader(http.StatusCreated)
+		return
+	default:
+		http.Error(w, "not allowed", http.StatusMethodNotAllowed)
+		return
 	}
-
-	// Parse the configurations passed
-	var proxyConfig ProxyConfig
-	fileData, err := os.ReadFile(*configPath)
-	if err != nil {
-		log.Printf("could not read config file %s: %v, using defaults", *configPath, err)
-		return proxyConfig
-	}
-	
-	if err := json.Unmarshal(fileData, &proxyConfig); err != nil {
-		log.Printf("invalid config file %s: %v, using defaults", *configPath, err)
-		return proxyConfig
-	}
-
-	return proxyConfig
 }
+
+// statusHandler handles GET /status and returns JSON status of the server pool
+func statusHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	type backendInfo struct {
+		URL                string `json:"url"`
+		Alive              bool   `json:"alive"`
+		CurrentConnections int64  `json:"current_connections"`
+	}
+	var infos []backendInfo
+	total := 0
+	active := 0
+	for _, b := range mainPool.Backends {
+		total++
+		b.mux.RLock()
+		alive := b.Alive
+		conns := b.CurrentConns
+		b.mux.RUnlock()
+		if alive {
+			active++
+		}
+		infos = append(infos, backendInfo{URL: b.URL.String(), Alive: alive, CurrentConnections: conns})
+	}
+	resp := map[string]interface{}{
+		"total_backends":  total,
+		"active_backends": active,
+		"backends":        infos,
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
+
