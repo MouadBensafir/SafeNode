@@ -3,7 +3,7 @@ package pool
 import (
 	"net/url"
 
-	"github.com/MouadBensafir/proxyApp/internal/backend"
+	"github.com/MouadBensafir/SafeNode/internal/backend"
 )
 
 type LoadBalancer interface {
@@ -11,7 +11,6 @@ type LoadBalancer interface {
 	AddBackend(backend *backend.Backend)
 	SetBackendStatus(url *url.URL, alive bool)
 }
-
 
 // Method to get the next valid peer concurrently
 func (mainPool *ServerPool) GetNextValidPeer() *backend.Backend {

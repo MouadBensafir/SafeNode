@@ -4,10 +4,10 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/MouadBensafir/proxyApp/internal/backend"
+	"github.com/MouadBensafir/SafeNode/internal/backend"
 )
 
-type ServerPool struct { 
+type ServerPool struct {
 	Backends []*backend.Backend `json:"backends"`
 	Current  atomic.Uint64
 	mux      sync.RWMutex

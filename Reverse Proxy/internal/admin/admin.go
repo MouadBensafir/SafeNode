@@ -7,9 +7,9 @@ import (
 	"net/url"
 	"sync/atomic"
 
-	"github.com/MouadBensafir/proxyApp/internal/backend"
-	"github.com/MouadBensafir/proxyApp/internal/pool"
-	"github.com/MouadBensafir/proxyApp/internal/proxy"
+	"github.com/MouadBensafir/SafeNode/internal/backend"
+	"github.com/MouadBensafir/SafeNode/internal/pool"
+	"github.com/MouadBensafir/SafeNode/internal/proxy"
 )
 
 // BackendsHandler handles POST/DELETE /backends.

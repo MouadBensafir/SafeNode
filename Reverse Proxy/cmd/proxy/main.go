@@ -6,11 +6,11 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/MouadBensafir/proxyApp/internal/admin"
-	"github.com/MouadBensafir/proxyApp/internal/config"
-	"github.com/MouadBensafir/proxyApp/internal/healthcheck"
-	"github.com/MouadBensafir/proxyApp/internal/pool"
-	"github.com/MouadBensafir/proxyApp/internal/proxy"
+	"github.com/MouadBensafir/SafeNode/internal/admin"
+	"github.com/MouadBensafir/SafeNode/internal/config"
+	"github.com/MouadBensafir/SafeNode/internal/healthcheck"
+	"github.com/MouadBensafir/SafeNode/internal/pool"
+	"github.com/MouadBensafir/SafeNode/internal/proxy"
 )
 
 func main() {
@@ -33,7 +33,7 @@ func main() {
 	adminMux.HandleFunc("/backends", admin.BackendsHandler(mainPool))
 	adminMux.HandleFunc("/status", admin.StatusHandler(mainPool))
 
-	// Proxy endpoint 
+	// Proxy endpoint
 	proxyMux := http.NewServeMux()
 	proxyMux.HandleFunc("/", proxy.Handler(mainPool))
 
@@ -45,7 +45,7 @@ func main() {
 		adminAddr := ":" + fmt.Sprint(cfg.AdminPort)
 		log.Printf("Starting Admin API on %s", adminAddr)
 		http.ListenAndServe(adminAddr, adminMux)
-	} ()
+	}()
 
 	// Serve the proxy
 	proxyAddr := ":" + fmt.Sprint(cfg.Port)

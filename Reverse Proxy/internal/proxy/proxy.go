@@ -7,8 +7,8 @@ import (
 	"net/url"
 	"sync/atomic"
 
-	"github.com/MouadBensafir/proxyApp/internal/backend"
-	"github.com/MouadBensafir/proxyApp/internal/pool"
+	"github.com/MouadBensafir/SafeNode/internal/backend"
+	"github.com/MouadBensafir/SafeNode/internal/pool"
 )
 
 // NewBackend initializes a backend with a reverse proxy and error handler.

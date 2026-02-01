@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/MouadBensafir/proxyApp/internal/pool"
+	"github.com/MouadBensafir/SafeNode/internal/pool"
 )
 
 func StartHealthChecker(freqMillis int, healthPath string, mainPool *pool.ServerPool) {
@@ -17,32 +17,32 @@ func StartHealthChecker(freqMillis int, healthPath string, mainPool *pool.Server
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	go func() {
-        for {
-            var wg sync.WaitGroup
-            
-            currentBackends := mainPool.BackendsSnapshot()
+		for {
+			var wg sync.WaitGroup
 
-            for _, b := range currentBackends {
-                wg.Add(1)
-                backend := b
-                go func() {
-                    defer wg.Done()
-                    alive := false
-                    healthURL := backend.URL.JoinPath(healthPath)
+			currentBackends := mainPool.BackendsSnapshot()
 
-                    resp, err := client.Get(healthURL.String())
-                    if err == nil {
-                        resp.Body.Close()
-                        if resp.StatusCode >= 200 && resp.StatusCode < 400 {
-                            alive = true
-                        }
-                    } 
-                    mainPool.SetBackendStatus(backend.URL, alive)
-                }()
-            }
-            wg.Wait()
-            time.Sleep(freq)
-        }
-    }()
+			for _, b := range currentBackends {
+				wg.Add(1)
+				backend := b
+				go func() {
+					defer wg.Done()
+					alive := false
+					healthURL := backend.URL.JoinPath(healthPath)
+
+					resp, err := client.Get(healthURL.String())
+					if err == nil {
+						resp.Body.Close()
+						if resp.StatusCode >= 200 && resp.StatusCode < 400 {
+							alive = true
+						}
+					}
+					mainPool.SetBackendStatus(backend.URL, alive)
+				}()
+			}
+			wg.Wait()
+			time.Sleep(freq)
+		}
+	}()
 	log.Printf("Health Checker started (interval=%s)", freq)
 }
