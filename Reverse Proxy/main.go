@@ -14,6 +14,7 @@ var mainPool ServerPool
 var cfg ProxyConfig
 
 func main() {
+	// Read and Parse config.json
 	cfg = SetupConfigurations()
 
 	// Automatically Add backends from config.json
@@ -26,24 +27,29 @@ func main() {
 		mainPool.AddBackend(initBackend(u))
 	}
 
-	// Admin endpoints
-	http.HandleFunc("/backends", backendsHandler)
-	http.HandleFunc("/status", statusHandler)
+	// Admin endpoint
+	adminMux := http.NewServeMux()
+	adminMux.HandleFunc("/backends", backendsHandler)
+	adminMux.HandleFunc("/status", statusHandler)
 
-	// Proxy endpoint (catch-all)
-	http.HandleFunc("/", handleRequests)
+	// Proxy endpoint 
+	proxyMux := http.NewServeMux()
+	proxyMux.HandleFunc("/", handleRequests)
 
 	// Start health checker
 	go StartHealthChecker(cfg.HealthCheckFreq)
 
-	addr := ":8080"
-	if cfg.Port != 0 {
-		addr = ":" + fmt.Sprint(cfg.Port)
-	}
-	log.Printf("starting proxy on %s", addr)
-	if err := http.ListenAndServe(addr, nil); err != nil {
-		log.Fatalf("server failed: %v", err)
-	}
+	//Serve the Admin API
+	go func() {
+		adminAddr := ":" + fmt.Sprint(cfg.AdminPort)
+		log.Printf("Starting Admin API on %s", adminAddr)
+		http.ListenAndServe(adminAddr, adminMux)
+	} ()
+
+	// Serve the proxy
+	proxyAddr := ":" + fmt.Sprint(cfg.Port)
+	log.Printf("Starting proxy on %s", proxyAddr)
+	http.ListenAndServe(proxyAddr, proxyMux)
 }
 
 // Function to initialize a backend with a proxy 
