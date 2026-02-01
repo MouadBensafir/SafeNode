@@ -28,12 +28,15 @@ func main() {
 			http.Error(w, "Bad Gateway", http.StatusBadGateway)
 		}
 
+		// Instantiate the backend
 		b_temp := &Backend{
 			URL:          url,
 			Alive:        false,
 			CurrentConns: 0,
 			RevProxy:     proxy,
 		}
+
+		// Add it to the server pool
 		mainPool.AddBackend(b_temp)
 	}
 
@@ -45,7 +48,7 @@ func main() {
 	http.HandleFunc("/", handleRequests)
 
 	// Start health checker
-	StartHealthChecker(cfg.HealthCheckFreq)
+	go StartHealthChecker(cfg.HealthCheckFreq)
 
 	addr := ":8080"
 	if cfg.Port != 0 {
@@ -73,40 +76,75 @@ func handleRequests(w http.ResponseWriter, r *http.Request) {
 
 func backendsHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
-	case http.MethodPost:
-		body, err := io.ReadAll(r.Body)
-		if err != nil {
-			http.Error(w, "bad request", http.StatusBadRequest)
+		case http.MethodPost:
+			body, err := io.ReadAll(r.Body)
+			if err != nil {
+				http.Error(w, "bad request", http.StatusBadRequest)
+				return
+			}
+			var payload struct {
+				URL string `json:"url"`
+			}
+			if err := json.Unmarshal(body, &payload); err != nil {
+				http.Error(w, "invalid json", http.StatusBadRequest)
+				return
+			}
+			u, err := url.Parse(payload.URL)
+			if err != nil {
+				http.Error(w, "invalid url", http.StatusBadRequest)
+				return
+			}
+
+			// Error Handling to mark the backend as dead immediately upon failure
+			proxy := httputil.NewSingleHostReverseProxy(u)
+			proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+				log.Printf("proxy error for %s: %v", u, err)
+				mainPool.SetBackendStatus(u, false)
+				http.Error(w, "Bad Gateway", http.StatusBadGateway)
+			}
+
+			b := &Backend{
+				URL:          u,
+				Alive:        false,
+				CurrentConns: 0,
+				RevProxy:     proxy,
+			}
+			mainPool.AddBackend(b)
+			w.WriteHeader(http.StatusCreated)
 			return
-		}
-		var payload struct {
-			URL string `json:"url"`
-		}
-		if err := json.Unmarshal(body, &payload); err != nil {
-			http.Error(w, "invalid json", http.StatusBadRequest)
+		case http.MethodDelete:
+			body, err := io.ReadAll(r.Body)
+			if err != nil {
+				http.Error(w, "bad request", http.StatusBadRequest)
+				return
+			}
+			var payload struct {
+				URL string `json:"url"`
+			}
+			if err := json.Unmarshal(body, &payload); err != nil {
+				http.Error(w, "invalid json", http.StatusBadRequest)
+				return
+			}
+			u, err := url.Parse(payload.URL)
+			if err != nil {
+				http.Error(w, "invalid url", http.StatusBadRequest)
+				return
+			}
+			isFound := mainPool.RemoveBackend(u)
+
+			if !isFound {
+				w.WriteHeader(http.StatusNotFound)
+			} else {
+				w.WriteHeader(http.StatusNoContent)
+			}
 			return
-		}
-		u, err := url.Parse(payload.URL)
-		if err != nil {
-			http.Error(w, "invalid url", http.StatusBadRequest)
+		default:
+			http.Error(w, "not allowed", http.StatusMethodNotAllowed)
 			return
-		}
-		b := &Backend{
-			URL:          u,
-			Alive:        false,
-			CurrentConns: 0,
-			RevProxy:     httputil.NewSingleHostReverseProxy(u),
-		}
-		mainPool.AddBackend(b)
-		w.WriteHeader(http.StatusCreated)
-		return
-	default:
-		http.Error(w, "not allowed", http.StatusMethodNotAllowed)
-		return
 	}
 }
 
-// statusHandler handles GET /status and returns JSON status of the server pool
+// Handles GET /status and returns JSON status of the server pool
 func statusHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "not allowed", http.StatusMethodNotAllowed)

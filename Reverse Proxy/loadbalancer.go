@@ -10,6 +10,8 @@ type LoadBalancer interface {
 	SetBackendStatus(url *url.URL, alive bool)
 }
 
+
+// Method to get the next valid peer concurrently
 func (mainPool *ServerPool) GetNextValidPeer() *Backend {
 	// If there are no backends configured
 	n := uint64(len(mainPool.Backends))
@@ -42,12 +44,14 @@ func (mainPool *ServerPool) GetNextValidPeer() *Backend {
 	}
 }
 
+// Method to add a Backend
 func (mainPool *ServerPool) AddBackend(backend *Backend) {
 	mainPool.mux.Lock()
 	mainPool.Backends = append(mainPool.Backends, backend)
 	mainPool.mux.Unlock()
 }
 
+// Method to remove a Backend using its url
 func (mainPool *ServerPool) RemoveBackend(target *url.URL) bool {
 	mainPool.mux.Lock()
 	defer mainPool.mux.Unlock()
@@ -60,6 +64,7 @@ func (mainPool *ServerPool) RemoveBackend(target *url.URL) bool {
 	return false
 }
 
+// Method to Change a Backend's status
 func (mainPool *ServerPool) SetBackendStatus(target *url.URL, alive bool) {
 	mainPool.mux.RLock()
 	backends := append([]*Backend(nil), mainPool.Backends...)
