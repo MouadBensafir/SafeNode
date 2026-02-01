@@ -52,11 +52,11 @@ func main() {
 	http.ListenAndServe(proxyAddr, proxyMux)
 }
 
-// Function to initialize a backend with a proxy 
+// Helper Function to initialize a backend with a proxy
 func initBackend(u *url.URL) *Backend {
 	proxy := httputil.NewSingleHostReverseProxy(u)
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
-		log.Printf("proxy error for %s: %v", u, err)
+		log.Printf("Proxy Error for %s: %v", u, err)
 		mainPool.SetBackendStatus(u, false)
 		http.Error(w, "Bad Gateway", http.StatusBadGateway)
 	}
@@ -84,6 +84,21 @@ func parseURLFromRequest(r *http.Request) (*url.URL, error) {
 	return u, nil
 }
 
+// Handler for the proxy
+func handleRequests(w http.ResponseWriter, r *http.Request) {
+	backnd := mainPool.GetNextValidPeer()
+	if backnd == nil {
+		http.Error(w, "Service Unavailable", http.StatusServiceUnavailable)
+		return
+	}
+
+	atomic.AddInt64(&backnd.CurrentConns, 1)
+	defer atomic.AddInt64(&backnd.CurrentConns, -1)
+
+	backnd.RevProxy.ServeHTTP(w, r)
+}
+
+// Hander for the Admin API on "/backend"
 func backendsHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost && r.Method != http.MethodDelete {
 		http.Error(w, "not allowed", http.StatusMethodNotAllowed)
@@ -110,19 +125,8 @@ func backendsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func handleRequests(w http.ResponseWriter, r *http.Request) {
-	backnd := mainPool.GetNextValidPeer()
-	if backnd == nil {
-		http.Error(w, "Service Unavailable", http.StatusServiceUnavailable)
-		return
-	}
 
-	atomic.AddInt64(&backnd.CurrentConns, 1)
-	defer atomic.AddInt64(&backnd.CurrentConns, -1)
-
-	backnd.RevProxy.ServeHTTP(w, r)
-}
-
+// Handler for the Admin API on "/status"
 func statusHandler(w http.ResponseWriter, r *http.Request) {
     if r.Method != http.MethodGet {
         http.Error(w, "not allowed", http.StatusMethodNotAllowed)
@@ -132,7 +136,6 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
     var infos []backendInfo
     active := 0
     
-
     mainPool.mux.RLock()
     defer mainPool.mux.RUnlock()
 
