@@ -45,17 +45,20 @@ func (mainPool *ServerPool) GetNextValidPeer() *Backend {
 }
 
 func (mainPool *ServerPool) AddBackend(backend *Backend) {
+	mainPool.mux.Lock()
 	mainPool.Backends = append(mainPool.Backends, backend)
+	mainPool.mux.Unlock()
 }
 
-func (mainPool *ServerPool) SetBackendStatus(url *url.URL, alive bool) {
-	for _, backend := range mainPool.Backends {
-		backend.mux.Lock()
-		if backend.URL != nil && backend.URL.String() == url.String() {
-			backend.Alive = alive
-			backend.mux.Unlock()
+func (mainPool *ServerPool) SetBackendStatus(target *url.URL, alive bool) {
+	mainPool.mux.RLock()
+	backends := append([]*Backend(nil), mainPool.Backends...)
+	mainPool.mux.RUnlock()
+
+	for _, backend := range backends {
+		if backend.URL != nil && backend.URL.String() == target.String() {
+			backend.SetAlive(alive)
 			return
 		}
-		backend.mux.Unlock()
 	}
 }

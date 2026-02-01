@@ -13,3 +13,9 @@ type Backend struct {
 	RevProxy 		*httputil.ReverseProxy
 	mux 			sync.RWMutex
 }
+
+func (b *Backend) SetAlive(alive bool) {
+	b.mux.Lock()
+	b.Alive = alive
+	b.mux.Unlock()
+}
