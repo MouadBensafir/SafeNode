@@ -44,11 +44,14 @@ func main() {
 	go func() {
 		adminAddr := ":" + fmt.Sprint(cfg.AdminPort)
 		log.Printf("Starting Admin API on %s", adminAddr)
-		http.ListenAndServe(adminAddr, adminMux)
+		http.ListenAndServeTLS(adminAddr, "cert.pem", "key.pem", adminMux)
 	}()
 
 	// Serve the proxy
 	proxyAddr := ":" + fmt.Sprint(cfg.Port)
 	log.Printf("Starting proxy on %s", proxyAddr)
-	http.ListenAndServe(proxyAddr, proxyMux)
+	err := http.ListenAndServeTLS(proxyAddr, "cert.pem", "key.pem" , proxyMux)
+	if err != nil {
+		log.Fatal(err)
+	}
 }

@@ -26,10 +26,16 @@ Edit `config.json`:
 }
 ```
 
+## TLS Certificates
+This proxy runs over HTTPS. You must generate self-signed certificates before running the application:
+
+```bash
+openssl req -x509 -newkey rsa:4096 -keyout cmd/key.pem -out cmd/cert.pem -days 365 -nodes -subj "/CN=localhost"
+```
+
 ## Run the proxy
 ```bash
-cd Reverse\ Proxy/
-go run cmd/proxy/main.go --config=config.json
+go run main.go --config=config.json
 ```
 
 ## Run dummy servers
@@ -50,5 +56,5 @@ A Windows executable (hey.exe) is included in the Reverse Proxy directory, or yo
 
 Run the following command in your terminal to send 200 requests with 100 concurrent workers:
 ```bash
-.\hey.exe -n 200 -c 100 http://localhost:8080
+.\hey.exe -n 200 -c 100 https://localhost:8080
 ```
