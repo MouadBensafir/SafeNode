@@ -24,15 +24,6 @@ func (mainPool *ServerPool) GetNextValidPeer() *backend.Backend {
 	mainPool.mux.RLock()
 	strategy := mainPool.Strategy
 	mainPool.mux.RUnlock()
-	
-	if strategy == nil {
-		mainPool.mux.Lock()
-		if mainPool.Strategy == nil {
-			mainPool.Strategy = &RoundRobinStrategy{}
-		}
-		strategy = mainPool.Strategy
-		mainPool.mux.Unlock()
-	}
 
 	return strategy.NextBackend(backends)
 }
