@@ -5,15 +5,13 @@ import (
 	"log"
 	"net/http"
 	"time"
-	"os"
-	"os/signal"
-	"context"
 
 	"github.com/MouadBensafir/SafeNode/internal/admin"
 	"github.com/MouadBensafir/SafeNode/internal/config"
 	"github.com/MouadBensafir/SafeNode/internal/healthcheck"
 	"github.com/MouadBensafir/SafeNode/internal/pool"
 	"github.com/MouadBensafir/SafeNode/internal/proxy"
+	"github.com/MouadBensafir/SafeNode/internal/shutdown"
 )
 
 func main() {
@@ -48,7 +46,7 @@ func main() {
 	go func() {
 		log.Printf("Starting proxy on %s", proxyAddr)
 		err := proxyServer.ListenAndServeTLS("cert.pem", "key.pem")
-		if err != nil {
+		if err != nil && err != http.ErrServerClosed{
 			log.Fatal("Proxy server error: ", err)
 		}
 	} ()
@@ -61,30 +59,11 @@ func main() {
 		adminAddr := ":" + fmt.Sprint(cfg.AdminPort)
 		log.Printf("Starting Admin API on %s", adminAddr)
 		err := adminServer.ListenAndServeTLS("cert.pem", "key.pem")
-		if err != nil {
+		if err != nil && err != http.ErrServerClosed {
 			log.Fatal(err)
 		}
 	}()
 
-	// Handle Interrupt Signal
-	graceful_exit_signal := make(chan os.Signal)
-	signal.Notify(graceful_exit_signal, os.Interrupt)
-	<-graceful_exit_signal
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-    defer cancel()
-
-	// Shutdown Proxy
-    if err := proxyServer.Shutdown(ctx); err != nil {
-        log.Printf("Proxy forced to shutdown: %v", err)
-    } else {
-        log.Println("Proxy stopped gracefully")
-    }
-
-    // Shutdown Admin API
-    if err := adminServer.Shutdown(ctx); err != nil {
-        log.Printf("Admin API forced to shutdown: %v", err)
-    } else {
-        log.Println("Admin API stopped gracefully")
-    }
+	// Handle Shutdown Gracefully
+	shutdown.HandleGracefulShutdown(proxyServer, adminServer)
 }
