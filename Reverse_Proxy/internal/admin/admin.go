@@ -16,7 +16,7 @@ import (
 func BackendsHandler(mainPool *pool.ServerPool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost && r.Method != http.MethodDelete {
-			http.Error(w, "not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, "Not allowed", http.StatusMethodNotAllowed)
 			return
 		}
 
@@ -44,7 +44,7 @@ func BackendsHandler(mainPool *pool.ServerPool) http.HandlerFunc {
 func StatusHandler(mainPool *pool.ServerPool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
-			http.Error(w, "not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, "Not allowed", http.StatusMethodNotAllowed)
 			return
 		}
 
@@ -81,11 +81,11 @@ func parseURLFromRequest(r *http.Request) (*url.URL, error) {
 		URL string `json:"url"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		return nil, fmt.Errorf("invalid json")
+		return nil, fmt.Errorf("Invalid json")
 	}
 	u, err := url.Parse(payload.URL)
 	if err != nil {
-		return nil, fmt.Errorf("invalid url")
+		return nil, fmt.Errorf("Invalid url")
 	}
 	return u, nil
 }

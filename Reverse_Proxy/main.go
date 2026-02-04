@@ -42,7 +42,7 @@ func main() {
 		IdleTimeout:  time.Duration(cfg.RequestTimeout) * 12 * time.Millisecond,
 	}
 
-	// Strat Proxy
+	// Start Proxy
 	go func() {
 		log.Printf("Starting proxy on %s", proxyAddr)
 		err := proxyServer.ListenAndServeTLS("cert.pem", "key.pem")
