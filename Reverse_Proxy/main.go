@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/MouadBensafir/SafeNode/internal/admin"
 	"github.com/MouadBensafir/SafeNode/internal/config"
@@ -25,8 +26,18 @@ func main() {
 	adminMux.HandleFunc("/status", admin.StatusHandler(mainPool))
 
 	// Proxy endpoint
-	proxyMux := http.NewServeMux()
-	proxyMux.HandleFunc("/", proxy.ProxyHandler(mainPool))
+	proxyAddr := ":" + fmt.Sprint(cfg.Port)
+	proxyServer := &http.Server{
+		Addr:         proxyAddr,        
+		Handler:      proxy.ProxyHandler(mainPool),     
+		ReadTimeout:  time.Duration(cfg.RequestTimeout) * time.Millisecond, 
+		WriteTimeout: time.Duration(cfg.RequestTimeout) * time.Millisecond,
+		IdleTimeout:  time.Duration(cfg.RequestTimeout) * 12 * time.Millisecond,
+	}
+	err := proxyServer.ListenAndServeTLS("cert.pem", "key.pem")
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// Start Health Checker
 	go healthcheck.StartHealthChecker(cfg.HealthCheckFreq, cfg.HealthCheckPath, mainPool)
@@ -41,11 +52,4 @@ func main() {
 		}
 	}()
 
-	// Serve the Proxy
-	proxyAddr := ":" + fmt.Sprint(cfg.Port)
-	log.Printf("Starting proxy on %s", proxyAddr)
-	err := http.ListenAndServeTLS(proxyAddr, "cert.pem", "key.pem" , proxyMux)
-	if err != nil {
-		log.Fatal(err)
-	}
 }
