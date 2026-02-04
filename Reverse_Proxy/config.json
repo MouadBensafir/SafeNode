@@ -1,7 +1,7 @@
 {
     "port": 8080,
     "admin_port": 8081,
-    "strategy": "round-robin",
+    "strategy": "least-connections",
     "health_check_frequency": 5000,
     "health_check_path": "/health",
     "request_timeout_ms": 10000,
